@@ -1,3 +1,61 @@
+# Домашнее задание к занятию "3.4. Операционные системы. Лекция 2" 
+1. Юнит для node_exporter
+
+    **Содержимое unit файла. Вывод команды `systemctl cat node_exporter`.**
+    ```
+    # /etc/systemd/system/node_exporter.service
+    [Unit]
+    Description="node_exporter"
+
+    [Service]
+    EnvironmentFile=-/etc/default/node_exporter
+    ExecStart=/usr/sbin/node_exporter $NODE_OPTS
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    **Содержимое файла опций. Переопределён tcp порт с 9100 на 9101 Вывод команды `cat /etc/default/node_exporter`.**
+   ```
+   NODE_OPTS='--web.listen-address=":9101"'
+   ```
+   **Вывод команды `systemctl status node_exporter`**
+   ```
+   ● node_exporter.service - "node_exporter"
+        Loaded: loaded (/etc/systemd/system/node_exporter.service; enabled; vendor preset: enabled)
+        Active: active (running) since Tue 2022-11-01 17:24:46 MSK; 7min ago
+      Main PID: 7184 (node_exporter)
+         Tasks: 5 (limit: 2305)
+        Memory: 5.5M
+        CGroup: /system.slice/node_exporter.service
+                └─7184 /usr/sbin/node_exporter --web.listen-address=:9101
+   ```
+
+2. Опции node_exporter для базового мониторинга:
+    * `--collector.os, --collector.dmi` - Сбор инвентарных данных.
+    * `--collector.loadavg` - Мониторинг загрузки системы.
+    * `--collector.cpu, --collector.cpufreq` - Мониторинг утилизации ресурсов CPU.
+    * `--collector.meminfo` - Мониторинг использования памяти.
+    * `--collector.filesystem` - Мониторинг использования файловых систем.
+    * `--collector.diskstats` - Мониторинг дисков.
+    * `--collector.netclass, --collector.netdev, --collector.netstat` - Мониторинг сетевых интерфейсов.
+3. После изменения параметра `bind` на `0.0.0.0` web интерфейс стал доступен. Скриншот task3_netdata по дополнительной
+ссылке.
+4. Да, можно. В выводе `dmesg` появляется указывающая на это запись `Hypervisor detected: KVM`.  
+5. Параметр `fs.nr_open` имеет значение по умолчанию `1048576`. Данный параметр задает максимальное кол-во файловых
+дескрипторов для одного процесса на уровне системы. Фактический лимит зависит от лимита ресурсов `RLIMIT_NOFILE` который
+можно посмотреть и изменить командой `ulimit -n` или через файл `/etc/security/limits.conf`, так же можно создать
+конфигурацию в директории `/etc/security/limits.d/`.
+6. Скриншоты task6_nsenter01 и task6_nsenter02 по дополнительной ссылке.
+7. Конструкция `:(){ :|:& };:` называется **форк-бомбой** и является описанием функции с именем `:` в теле которой
+происходит рекурсивной вызов двух экземпляров данной функции в фоне. Из-за отсутствия ограничивающих запуск новых 
+экземпляров условий, функция в прогрессии порождает новые процессы. Стабилизировать помог механизм cgroup который
+ограничил кол-во процессов для конкретного пользователя. По умолчанию для systemd user-$UID.sllice выставляется значение
+равное 33% от параметра `sysctl kernel.threads-max`. Можно увеличить через изменение параметра `kernel.threads-max` или
+для конкретного пользователя командой `systemctl set-property user-1000.slice TasksMax=<НУЖНОЕ_ЧИСЛО>`, или в файле
+конфигурации `/etc/systemd/system.conf` параметр `DefaultTasksMax` для всех slice.
+
+---
+
 # Домашнее задание к занятию "3.3. Операционные системы. Лекция 1"
 1. Команда `cd` делает системный вызов `chdir`, в выводе `strace` отображается как `chdir("/tmp")`.
 2. Команда `file` обращается к базе по пути `/usr/share/misc/magic.mgc`, так же поиск шаблона осуществлялся в файлах
@@ -19,8 +77,9 @@
       domainname}.
 7. Отличие оператора `;` от `&&` заключается в том, что в первом случаи будут безусловно выполнены все команды в
 последовательности, а во втором случаи каждая следующая команда в последовательности будет запущена, только если код
-возврата предыдущей команды равен `0` (успешное завершение). Оператор `&&` теряет свой смысл после применения команды
-`set -e` и может быть заменен на `;`, т.к. при первом же не нулевом коде возврата, будет завершон процесс bash.  
+возврата предыдущей команды равен `0` (успешное завершение).
+    > The shell does not exit if the command that fails is . . . part of any command executed in a && or || list except
+the command following the final &&  
 8. Опции `set`:
     * `-e` - завершает процесс bash если какая-либо команда вернёт не нулевой код завершения.
     * `-u` - обращение к не инициализированной переменной будет вызывать ошибку.
