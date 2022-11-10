@@ -1,3 +1,276 @@
+# Домашнее задание к занятию "3.5. Файловые системы"
+1. Sparse (разряженный) файл - это такой файл у которого последовательности нулевых байт заменяются так называемые
+дырами `Hole`, информация о дырах записывается в метаданных файловой системы и по факту указанные последовательности не
+занимают места на диске, хотя размер файла будет отображаться с учётом этих ненулевых последовательностей.
+2. Файлы являющееся жесткими ссылками на один объект будут иметь одинаковые права доступа и владельцев, так получается
+потому что жёсткая ссылка это ссылка на индексный дескриптор `inode` в которым хранятся права доступа и владелец, а в
+данном случаи файлы ссылаются на один и тот же `inode`.
+3. Новая ВМ с дополнительными двумя не размеченными дисками создана:
+    ```
+    root@vagrant:~# lsblk
+    NAME                      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+    loop0                       7:0    0 61.9M  1 loop /snap/core20/1328
+    loop1                       7:1    0 67.2M  1 loop /snap/lxd/21835
+    loop2                       7:2    0 43.6M  1 loop /snap/snapd/14978
+    sda                         8:0    0   64G  0 disk
+    ├─sda1                      8:1    0    1M  0 part
+    ├─sda2                      8:2    0  1.5G  0 part /boot
+    └─sda3                      8:3    0 62.5G  0 part
+       └─ubuntu--vg-ubuntu--lv 253:0    0 31.3G  0 lvm  /
+    sdb                         8:16   0  2.5G  0 disk
+    sdc                         8:32   0  2.5G  0 disk
+    ```
+
+4. Процесс разбивки первого диска утилитой `fdisk`:
+    ```
+    root@vagrant:~# fdisk /dev/sdb
+    #---------------------DISK 2G----------------------------
+    Command (m for help): n
+    Partition type
+       p   primary (0 primary, 0 extended, 4 free)
+       e   extended (container for logical partitions)
+    Select (default p): p
+    Partition number (1-4, default 1): 1
+    First sector (2048-5242879, default 2048): 2048
+    Last sector, +/-sectors or +/-size{K,M,G,T,P} (2048-5242879, default 5242879): +2G
+    
+    Created a new partition 1 of type 'Linux' and of size 2 GiB.
+    #---------------------DISK 511M----------------------------
+    Command (m for help): n
+    Partition type
+       p   primary (1 primary, 0 extended, 3 free)
+       e   extended (container for logical partitions)
+    Select (default p):
+   
+    Using default response p.
+    Partition number (2-4, default 2):
+    First sector (4196352-5242879, default 4196352):
+    Last sector, +/-sectors or +/-size{K,M,G,T,P} (4196352-5242879, default 5242879):
+   
+    Created a new partition 2 of type 'Linux' and of size 511 MiB. 
+    ```
+   
+5. Перенос таблицы разделов с первого на второй диск утилитой `sfdisk`:
+    ```
+    root@vagrant:~# sfdisk -d /dev/sdb | sfdisk /dev/sdc
+    Checking that no-one is using this disk right now ... OK
+   
+    Disk /dev/sdc: 2.51 GiB, 2684354560 bytes, 5242880 sectors
+    Disk model: VBOX HARDDISK
+    Units: sectors of 1 * 512 = 512 bytes
+    Sector size (logical/physical): 512 bytes / 512 bytes
+    I/O size (minimum/optimal): 512 bytes / 512 bytes
+   
+    >>> Script header accepted.
+    >>> Script header accepted.
+    >>> Script header accepted.
+    >>> Script header accepted.
+    >>> Created a new DOS disklabel with disk identifier 0xc14b955e.
+    /dev/sdc1: Created a new partition 1 of type 'Linux' and of size 2 GiB.
+    /dev/sdc2: Created a new partition 2 of type 'Linux' and of size 511 MiB.
+    /dev/sdc3: Done.
+   
+    New situation:
+    Disklabel type: dos
+    Disk identifier: 0xc14b955e
+    
+    Device     Boot   Start     End Sectors  Size Id Type
+    /dev/sdc1          2048 4196351 4194304    2G 83 Linux
+    /dev/sdc2       4196352 5242879 1046528  511M 83 Linux
+   
+    The partition table has been altered.
+    Calling ioctl() to re-read partition table.
+    Syncing disks.
+    ```
+
+6. Сборка программного RAID 1 2х2Гб:
+   ```
+   root@vagrant:~# mdadm --create --verbose /dev/md1 --level=1 --raid-devices=2 /dev/sdb1 /dev/sdc1
+   mdadm: size set to 2094080K
+   Continue creating array? y
+   mdadm: Defaulting to version 1.2 metadata
+   mdadm: array /dev/md1 started.
+   
+   root@vagrant:~# cat /proc/mdstat
+   Personalities : [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] [raid10]
+   md1 : active raid1 sdc1[1] sdb1[0]
+         2094080 blocks super 1.2 [2/2] [UU]
+   
+   unused devices: <none>
+   ```
+
+7. Сборка программного RAID 0 2х511 Мб:
+   ```
+   root@vagrant:~# mdadm --create --verbose /dev/md0 --level=0 --raid-devices=2 /dev/sdb2 /dev/sdc2
+   mdadm: chunk size defaults to 512K
+   mdadm: Defaulting to version 1.2 metadata
+   mdadm: array /dev/md0 started.
+   
+   root@vagrant:~# cat /proc/mdstat
+   Personalities : [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] [raid10]
+   md0 : active raid0 sdc2[1] sdb2[0]
+         1042432 blocks super 1.2 512k chunks
+   
+   md1 : active raid1 sdc1[1] sdb1[0]
+         2094080 blocks super 1.2 [2/2] [UU]
+   ```
+
+8. Создание PV LVM на блочных устройствах массивов:
+   ```
+   root@vagrant:~# pvcreate /dev/md0
+     Physical volume "/dev/md0" successfully created.
+   
+   root@vagrant:~# pvcreate /dev/md1
+     Physical volume "/dev/md1" successfully created.
+   
+   root@vagrant:~# pvs
+     PV         VG        Fmt  Attr PSize    PFree
+     /dev/md0             lvm2 ---  1018.00m 1018.00m
+     /dev/md1             lvm2 ---    <2.00g   <2.00g
+     /dev/sda3  ubuntu-vg lvm2 a--   <62.50g   31.25g
+   ```
+
+9. Создание общей VG:
+   ```
+   root@vagrant:~# vgcreate vg_r0_r1 /dev/md0 /dev/md1
+     Volume group "vg_r0_r1" successfully created
+
+      root@vagrant:~# vgs
+     VG        #PV #LV #SN Attr   VSize   VFree
+     ubuntu-vg   1   1   0 wz--n- <62.50g 31.25g
+     vg_r0_r1    2   0   0 wz--n-  <2.99g <2.99g
+   ```
+
+10. Создание LV на 100 Мб:
+   ```
+   root@vagrant:~# lvcreate -n lv_test1 -L 100M vg_r0_r1 /dev/md0
+     Logical volume "lv_test1" created.
+
+   root@vagrant:~# lvs -o +devices
+     LV        VG        Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert Devices
+     ubuntu-lv ubuntu-vg -wi-ao---- <31.25g                                                     /dev/sda3(0)
+     lv_test1  vg_r0_r1  -wi-a----- 100.00m                                                     /dev/md0(0)
+   ```
+
+11. Создание файловой системы на LV 100 Мб:
+   ```
+   root@vagrant:~# mkfs.ext4 /dev/mapper/vg_r0_r1-lv_test1
+   mke2fs 1.45.5 (07-Jan-2020)
+   Creating filesystem with 25600 4k blocks and 25600 inodes
+   
+   Allocating group tables: done
+   Writing inode tables: done
+   Creating journal (1024 blocks): done
+   Writing superblocks and filesystem accounting information: done
+   ```
+
+12. Монтирование файловой системы:
+   ```
+   root@vagrant:~# mkdir /mnt/tmp
+
+   root@vagrant:~# mount /dev/mapper/vg_r0_r1-lv_test1 /mnt/tmp
+
+   root@vagrant:~# df -hT /mnt/tmp
+   Filesystem                    Type  Size  Used Avail Use% Mounted on
+   /dev/mapper/vg_r0_r1-lv_test1 ext4   93M   72K   86M   1% /mnt/tmp
+   ```
+
+13. Скачивание файла:
+   ```
+   root@vagrant:~# cd /mnt/tmp
+   root@vagrant:/mnt/tmp# wget https://mirror.yandex.ru/ubuntu/ls-lR.gz -O test.gz
+
+   root@vagrant:/mnt/tmp# ll
+   total 22772
+   drwxr-xr-x 3 root root     4096 Nov 10 05:01 ./
+   drwxr-xr-x 3 root root     4096 Nov 10 04:59 ../
+   drwx------ 2 root root    16384 Nov 10 04:57 lost+found/
+   -rw-r--r-- 1 root root 23292824 Nov 10 03:53 test.gz
+   ```
+
+14. Вывод команды `lsblk`:
+   ```
+   root@vagrant:/mnt/tmp# lsblk
+   NAME                      MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINT
+   loop0                       7:0    0 61.9M  1 loop  /snap/core20/1328
+   loop1                       7:1    0 43.6M  1 loop  /snap/snapd/14978
+   loop2                       7:2    0 67.8M  1 loop  /snap/lxd/22753
+   loop3                       7:3    0   48M  1 loop  /snap/snapd/17336
+   loop4                       7:4    0 67.2M  1 loop  /snap/lxd/21835
+   loop5                       7:5    0 63.2M  1 loop  /snap/core20/1695
+   sda                         8:0    0   64G  0 disk
+   ├─sda1                      8:1    0    1M  0 part
+   ├─sda2                      8:2    0  1.5G  0 part  /boot
+   └─sda3                      8:3    0 62.5G  0 part
+     └─ubuntu--vg-ubuntu--lv 253:0    0 31.3G  0 lvm   /
+   sdb                         8:16   0  2.5G  0 disk
+   ├─sdb1                      8:17   0    2G  0 part
+   │ └─md1                     9:1    0    2G  0 raid1
+   └─sdb2                      8:18   0  511M  0 part
+     └─md0                     9:0    0 1018M  0 raid0
+       └─vg_r0_r1-lv_test1   253:1    0  100M  0 lvm   /mnt/tmp
+   sdc                         8:32   0  2.5G  0 disk
+   ├─sdc1                      8:33   0    2G  0 part
+   │ └─md1                     9:1    0    2G  0 raid1
+   └─sdc2                      8:34   0  511M  0 part
+     └─md0                     9:0    0 1018M  0 raid0
+       └─vg_r0_r1-lv_test1   253:1    0  100M  0 lvm   /mnt/tmp
+   ```
+
+15. Тестирование целостности файла `test.gz`:
+   ```
+   root@vagrant:/mnt/tmp# gzip -t test.gz
+   
+   root@vagrant:/mnt/tmp# echo $?
+   0
+   ```
+
+16. Перемещение выделеных экстендов с PV Raid0 на PV Raid1:
+   ```
+   root@vagrant:/mnt/tmp# pvmove /dev/md0 /dev/md1
+     /dev/md0: Moved: 24.00%
+     /dev/md0: Moved: 100.00%
+   
+   root@vagrant:/mnt/tmp# lvs -o +devices
+     LV        VG        Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert Devices
+     ubuntu-lv ubuntu-vg -wi-ao---- <31.25g                                                     /dev/sda3(0)
+     lv_test1  vg_r0_r1  -wi-ao---- 100.00m                                                     /dev/md1(0)   
+   ```
+
+17. Пометить диск в массиве как `faulty`:
+   ```
+   root@vagrant:/mnt/tmp# mdadm /dev/md1 -f /dev/sdb1
+   mdadm: set /dev/sdb1 faulty in /dev/md1
+   
+   root@vagrant:/mnt/tmp# cat /proc/mdstat
+   Personalities : [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] [raid10]
+   md0 : active raid0 sdc2[1] sdb2[0]
+         1042432 blocks super 1.2 512k chunks
+   
+   md1 : active raid1 sdc1[1] sdb1[0](F)
+         2094080 blocks super 1.2 [2/1] [_U]
+   
+   unused devices: <none>
+   ```
+
+18. Вывод команды `dmesg -T`:
+   ```
+   ...
+   [Thu Nov 10 05:20:27 2022] md/raid1:md1: Disk failure on sdb1, disabling device.
+                              md/raid1:md1: Operation continuing on 1 devices.
+   ```
+
+19. Тестирование файла `test.gz`:
+   ```
+   root@vagrant:/mnt/tmp# gzip -t test.gz
+   
+   root@vagrant:/mnt/tmp# echo $?
+   0
+   ```
+
+
+---
+
 # Домашнее задание к занятию "3.4. Операционные системы. Лекция 2" 
 1. Юнит для node_exporter
 
