@@ -1,3 +1,120 @@
+# Домашнее задание к занятию "3.6. Компьютерные сети. Лекция 1"
+1. HTTP GET запрос к stackoverflow.com/questions вернул код `403 Forbidden`. Код `403` означает что сервер понимает
+запрос, но у выполняемого его клиента ограничен доступ к указанному ресурсу. В данном случаи блокируется по ip адресу.
+Вывод команды telnet:
+   ```
+   root@ubu18:~# telnet stackoverflow.com 80
+   Trying 151.101.65.69...
+   Connected to stackoverflow.com.
+   Escape character is '^]'.
+   GET /questions HTTP/1.0
+   HOST: stackoverflow.com
+   
+   HTTP/1.1 403 Forbidden
+   Connection: close
+   Content-Length: 1920
+   Server: Varnish
+   Retry-After: 0
+   Content-Type: text/html
+   Accept-Ranges: bytes
+   Date: Sat, 12 Nov 2022 09:55:17 GMT
+   Via: 1.1 varnish
+   X-Served-By: cache-fra-eddf8230062-FRA
+   X-Cache: MISS
+   X-Cache-Hits: 0
+   X-Timer: S1668246917.170776,VS0,VE1
+   X-DNS-Prefetch-Control: off
+
+       <div class="wrapper">
+                   <div class="msg">
+                           <h1>Access Denied</h1>
+                           <p>This IP address (46.138.50.132) has been blocked from access to our services. 
+                           <p>Method: block</p>
+                           <p>Time: Sat, 12 Nov 2022 09:55:17 GMT</p>
+                           <p>URL: stackoverflow.com/questions</p>
+                   </div>
+           </div>
+   </body>
+   </html>Connection closed by foreign host.
+   ```
+
+2. HTTP GET запрос к stackoverflow.com через браузер вернул код `301 Moved Permanently`. Означает что запрошенный адрес
+был перенесён и надо переходить на URL указанный в заголовке `location`. В данном случаи на схему https.
+Дольше всего выполнялся запрос `https://stackoverflow.com/`. (Скриншот по дополнительной ссылке).
+
+3. На текущую сессию ip адрес `46.138.50.132`, определён с использованием сервиса `2ip.ru`.
+
+4. Провайдер `PJSC MGTS` номер автономной системы `AS25513`.\
+Вывод whois:
+   ```
+   root@ubu18:~# whois -h whois.ripe.net 46.138.50.132
+   
+   % Information related to '46.138.0.0/16AS25513'
+   
+   route:          46.138.0.0/16
+   descr:          Moscow Local Telephone Network (PJSC MGTS)
+   descr:          Moscow, Russia
+   origin:         AS25513
+   mnt-by:         MGTS-USPD-MNT
+   created:        2010-11-29T19:47:08Z
+   last-modified:  2020-01-13T10:32:12Z
+   source:         RIPE
+   ```
+5. Трассировка маршрута до ip адреса 8.8.8.8.\
+Вывод команды `traceroute`:
+   ```
+   root@ubu18:~# traceroute -nA 8.8.8.8
+   traceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets
+    1  192.168.1.1 [*]  15.558 ms  15.576 ms  15.571 ms
+    2  100.115.0.1 [*]  26.710 ms  26.736 ms  26.729 ms
+    3  212.188.1.6 [AS8359]  26.775 ms  26.768 ms  26.761 ms
+    4  212.188.1.5 [AS8359]  26.699 ms *  26.711 ms
+    5  72.14.223.74 [AS15169]  26.704 ms 72.14.223.72 [AS15169]  26.697 ms 72.14.223.74 [AS15169]  26.588 ms
+    6  108.170.250.34 [AS15169]  26.541 ms 108.170.250.83 [AS15169]  12.244 ms 108.170.250.99 [AS15169]  7.569 ms
+    7  142.251.238.82 [AS15169]  30.224 ms 142.250.238.214 [AS15169]  34.869 ms 142.251.238.82 [AS15169]  34.826 ms
+    8  72.14.232.190 [AS15169]  34.819 ms 142.251.238.68 [AS15169]  34.812 ms 142.251.237.146 [AS15169]  34.766 ms
+    9  216.239.47.167 [AS15169]  34.795 ms 72.14.237.201 [AS15169]  34.820 ms 216.239.58.53 [AS15169]  34.780 ms
+   10  * * *
+   11  * * *
+   12  * * *
+   13  * * *
+   14  * * *
+   15  * * *
+   16  * * *
+   17  * * *
+   18  8.8.8.8 [AS15169]  24.732 ms * *
+   ```
+
+6. Среднее значение RTT за 61 пакет было хуже всего с AS15169 ip 216.239.48.224. (Скриншот по дополнительной ссылке).
+
+7. Результаты получены командой `dig +trace dns.google`. \
+   Зону `dns.google.` держат серверы:
+   ```
+   dns.google.             10800   IN      NS      ns4.zdns.google.
+   dns.google.             10800   IN      NS      ns2.zdns.google.
+   dns.google.             10800   IN      NS      ns3.zdns.google.
+   dns.google.             10800   IN      NS      ns1.zdns.google.
+   ```
+   Записи типа A для имени `dns.google.`:
+   ```
+   dns.google.             900     IN      A       8.8.4.4
+   dns.google.             900     IN      A       8.8.8.8
+   ```
+   
+   Записи типа A для DNS серверов зоны `dns.google.`:
+   ```
+   ns4.zdns.google.        6455    IN      A       216.239.38.114
+   ns3.zdns.google.        6450    IN      A       216.239.36.114
+   ns2.zdns.google.        6448    IN      A       216.239.34.114
+   ns1.zdns.google.        6446    IN      A       216.239.32.114
+   ```
+
+8. Результат получен командами `dig -x 8.8.8.8` и `dig -x 8.8.4.4`: \
+   К ip адресам 8.8.8.8, 8.8.4.4 привязано доменное имя `dns.google.` об этом свидетельствуют PTR записи 
+   `8.8.8.8.in-addr.arpa.` и `4.4.8.8.in-addr.arpa.` в обратной зоне. 
+
+---
+
 # Домашнее задание к занятию "3.5. Файловые системы"
 1. Sparse (разряженный) файл - это такой файл у которого последовательности нулевых байт заменяются так называемые
 дырами `Hole`, информация о дырах записывается в метаданных файловой системы и по факту указанные последовательности не
