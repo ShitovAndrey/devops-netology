@@ -1,3 +1,316 @@
+# Домашнее задание к занятию "3.7. Компьютерные сети. Лекция 2"
+1. Примеры команд вывода информации по сетевым интерфейсам:
+   * Для Linux:
+   ```
+   root@ubu18:~# ip -br address
+   lo               UNKNOWN        127.0.0.1/8 ::1/128
+   enp0s3           UP             192.168.1.11/24 fe80::6d12:4343:68d0:b754/64
+   
+   root@ubu18:~# ifconfig -s
+   Iface      MTU    RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP TX-OVR Flg
+   enp0s3    1500   245634      0   2372 0        120376      0      0      0 BMRU
+   lo       65536     2263      0      0 0          2263      0      0      0 LRU
+   
+   root@ubu18:~# nmcli dev status
+   DEVICE  TYPE      STATE      CONNECTION
+   enp0s3  ethernet  connected  Wired connection 1
+   lo      loopback  unmanaged  --
+   ```
+   * Для Windows:
+   ```
+   PS C:\Users\Andy> ipconfig /all
+      Адаптер Ethernet Ethernet 5:
+   
+      Описание. . . . . . . . . . . . . : VirtualBox Host-Only Ethernet Adapter
+      Физический адрес. . . . . . . . . : 0A-00-27-00-00-05
+      DHCP включен. . . . . . . . . . . : Нет
+      Автонастройка включена. . . . . . : Да
+      IPv4-адрес. . . . . . . . . . . . : 192.168.56.1(Основной)
+      Маска подсети . . . . . . . . . . : 255.255.255.0
+      DNS-серверы. . . . . . . . . . . : fec0:0:0:ffff::1%1
+                                          fec0:0:0:ffff::2%1
+                                          fec0:0:0:ffff::3%1
+      NetBios через TCP/IP. . . . . . . . : Включен
+   
+   PS C:\Users\Andy> Get-NetIPAddress | Format-Table
+   ifIndex IPAddress                                       PrefixLength PrefixOrigin SuffixOrigin AddressState PolicyStore
+   ------- ---------                                       ------------ ------------ ------------ ------------ -----------
+   5       192.168.56.1                                              24 Manual       Manual       Preferred    ActiveStore
+   1       127.0.0.1                                                  8 WellKnown    WellKnown    Preferred    ActiveStore
+   
+   PS C:\Users\Andy> Get-NetAdapter
+   Name                      InterfaceDescription                    ifIndex Status       MacAddress             LinkSpeed
+   ----                      --------------------                    ------- ------       ----------             ---------
+   Ethernet 5                VirtualBox Host-Only Ethernet Adapter         5 Up           0A-00-27-00-00-05         1 Gbps
+   
+   PS C:\Users\Andy> Get-NetIPInterface
+   ifIndex InterfaceAlias                  AddressFamily NlMtu(Bytes) InterfaceMetric Dhcp     ConnectionState PolicyStore
+   ------- --------------                  ------------- ------------ --------------- ----     --------------- -----------
+   5       Ethernet 5                      IPv6                  1500              25 Enabled  Connected       ActiveStore
+   
+   ```
+2. Для распознавания соседей по сетевому интерфейсу используются протоколы CDP (Проприетарный Cisco) и LLDP. В Linux
+есть пакет `lldpd` который устанавливает `LLDP daemon` сервис в операционную систему и команды `lldpctl`, `lldpcli`.\
+Пример вывода соседей:
+   ```
+   root@ubu18:~# lldpcli show neighbors
+   -------------------------------------------------------------------------------
+   LLDP neighbors:
+   -------------------------------------------------------------------------------
+   Interface:    enp0s3, via: LLDP, RID: 3, Time: 0 day, 00:09:05
+     Chassis:
+       ChassisID:    mac 08:00:27:35:77:41
+       SysName:      mdl01.redlinx.ru
+       SysDescr:     CentOS Linux 8 Linux 4.18.0-305.3.1.el8.x86_64 #1 SMP Tue Jun 1 16:14:33 UTC 2021 x86_64
+       MgmtIP:       192.168.1.14
+       MgmtIP:       fe80::a00:27ff:fe35:7741
+       Capability:   Bridge, off
+       Capability:   Router, off
+       Capability:   Wlan, off
+       Capability:   Station, on
+     Port:
+       PortID:       mac 08:00:27:35:77:41
+       PortDescr:    enp0s3
+       TTL:          120
+   -------------------------------------------------------------------------------
+   ```
+3. Для разделения L2 коммутатора на несколько виртуальных сетей используется технология `VLAN` (стандарт IEEE 802.1Q). 
+Эта технология позволяет тегировать кадры, добавляя в них `VLAN ID` на основании которого и выполняется разделение.
+Для использования технологии в Ubuntu необходимо установить пакет `vlan` и подгрузить модуль ядра `modprobe 8021q`
+(`echo "8021q" >> /etc/modules'`). Добавление интерфейса с VLAN ID осуществляется командами `vconfig` (deprecated), 
+`ip` и так же можно создать используя NetwokrManager командами `nmcli`, `nmtui`.\
+Пример конфигурации VLAN (VLAN ID 22 через файл, VLAN ID 33 через nmtui):
+   ```
+   root@ubu18:~# cat /etc/network/interfaces
+   # interfaces(5) file used by ifup(8) and ifdown(8)
+   auto lo
+   iface lo inet loopback
+   
+   auto enp0s3.22
+   iface enp0s3.22 inet dhcp
+     vlan_raw_device enp0s3
+     
+   root@ubu18:~# ip -c a
+   1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+       link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+       inet 127.0.0.1/8 scope host lo
+          valid_lft forever preferred_lft forever
+       inet6 ::1/128 scope host
+          valid_lft forever preferred_lft forever
+   2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+       link/ether 08:00:27:20:b2:ef brd ff:ff:ff:ff:ff:ff
+       inet 192.168.1.11/24 brd 192.168.1.255 scope global dynamic noprefixroute enp0s3
+          valid_lft 86358sec preferred_lft 86358sec
+       inet6 fe80::6d12:4343:68d0:b754/64 scope link noprefixroute
+          valid_lft forever preferred_lft forever
+   3: enp0s3.33@enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+       link/ether 08:00:27:20:b2:ef brd ff:ff:ff:ff:ff:ff
+       inet6 fe80::a00:27ff:fe20:b2ef/64 scope link
+          valid_lft forever preferred_lft forever
+   6: enp0s3.22@enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+       link/ether 08:00:27:20:b2:ef brd ff:ff:ff:ff:ff:ff
+       inet6 fe80::a00:27ff:fe20:b2ef/64 scope link
+          valid_lft forever preferred_lft forever
+   ```
+4. Для агрегации сетевых интерфейсов в Linux используются методы `Bonding` (интерфейсы `bondX`) и `Teaming` (интерфейсы 
+`teamX`).\
+**Для балансировки используются режимы:**
+
+|                  Режим                   | Описание                                                                                                                                                                                 |
+|:----------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|           mode=0 (balance-rr)            | Балансировка `Round-robin`, пакеты последовательно направляются на интерфейсы в LAG.                                                                                                     |
+|           mode=2 (balance-xor)           | Пакеты распределяются между интерфейсами по формуле ((MAC-адрес источника) XOR (MAC-адрес получателя)) % число интерфейсов. Один и тот же интерфейс работает с определённым получателем. |
+ |             mode=4 (802.3ad)             | Агрегация интерфейсов используя протокол LACP (802.3ad)                                                                                                                                  |
+|           mode=5 (balance-tlb)           | Adaptive Transmit Load Balancing - входящие пакеты принимаются только активным сетевым интерфейсом, исходящий распределяется в зависимости от текущей загрузки каждого интерфейса.       |
+|           mode=6 (balance-alb)           | Adaptive Load Balancing - входящие и исходящие пакеты распределяются по интерфейсам LAG в зависимости от нагрузки.                                                                       |
+
+**Так же возможные режимы:**
+
+|                  Режим                   | Описание                                                                                                                       |
+|:----------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------|
+|          mode=1 (active-backup)          | В передаче пакетов используется один интерфейс из группы, если он теряет линк, то трафик переключается на резервный интерфейс. |
+|            mode=3 (broadcast)            | Все пакеты отправляются на все интерфейсы.                                                                                     |
+
+**Пример конфигурации:**
+   ```
+   root@ubu18:~# cat /etc/network/interfaces
+   # interfaces(5) file used by ifup(8) and ifdown(8)
+   auto lo
+   iface lo inet loopback
+   
+   auto enp0s8
+   iface enp0s8 inet manual
+       bond-master bond0
+   
+   auto enp0s9
+   iface enp0s9 inet manual
+       bond-master bond0
+   
+   iface bond0 inet dhcp
+     bond_mode balance-tlb
+     bond_miimon 100
+     bond_downdelay 200
+     bond_updelay 200
+     slaves enp0s8 enp0s9
+   
+   
+   root@ubu18:~# cat /proc/net/bonding/bond0
+   Ethernet Channel Bonding Driver: v3.7.1 (April 27, 2011)
+   
+   Bonding Mode: transmit load balancing
+   Primary Slave: None
+   Currently Active Slave: enp0s8
+   MII Status: up
+   MII Polling Interval (ms): 100
+   Up Delay (ms): 200
+   Down Delay (ms): 200
+   Peer Notification Delay (ms): 0
+   
+   Slave Interface: enp0s8
+   MII Status: up
+   Speed: 1000 Mbps
+   Duplex: full
+   Link Failure Count: 0
+   Permanent HW addr: 08:00:27:cd:76:72
+   Slave queue ID: 0
+   
+   Slave Interface: enp0s9
+   MII Status: up
+   Speed: 1000 Mbps
+   Duplex: full
+   Link Failure Count: 0
+   Permanent HW addr: 08:00:27:34:b0:15
+   Slave queue ID: 0
+   ```
+
+5. В сети с маской `/29` 8 IP адресов, из которых 6 IP адресов для хостов (полезные адреса), один широковещательный
+адрес (максимальный адрес в диапазоне) и  один адрес под идентификацию самой подсети (минимальный адрес в диапазоне).\
+Пример для подсети 192.168.1.8/29:
+   ```
+   root@ubu18:~# ipcalc -n 192.168.1.8/29
+   Address:   192.168.1.8          11000000.10101000.00000001.00001 000
+   Netmask:   255.255.255.248 = 29 11111111.11111111.11111111.11111 000
+   Wildcard:  0.0.0.7              00000000.00000000.00000000.00000 111
+   =>
+   Network:   192.168.1.8/29       11000000.10101000.00000001.00001 000
+   HostMin:   192.168.1.9          11000000.10101000.00000001.00001 001
+   HostMax:   192.168.1.14         11000000.10101000.00000001.00001 110
+   Broadcast: 192.168.1.15         11000000.10101000.00000001.00001 111
+   Hosts/Net: 6                     Class C, Private Internet
+   ```
+   Из сети с маской `/24` можно получить `32` подсети с маской `/29`.\
+   Пример для сети 10.10.10.0.24: 
+   ```
+   root@ubu18:~# ipcalc 10.10.10.0/24 29
+   Address:   10.10.10.0           00001010.00001010.00001010. 00000000
+   Netmask:   255.255.255.0 = 24   11111111.11111111.11111111. 00000000
+   Wildcard:  0.0.0.255            00000000.00000000.00000000. 11111111
+   =>
+   Network:   10.10.10.0/24        00001010.00001010.00001010. 00000000
+   HostMin:   10.10.10.1           00001010.00001010.00001010. 00000001
+   HostMax:   10.10.10.254         00001010.00001010.00001010. 11111110
+   Broadcast: 10.10.10.255         00001010.00001010.00001010. 11111111
+   Hosts/Net: 254                   Class A, Private Internet
+   
+   Subnets after transition from /24 to /29
+   
+   Netmask:   255.255.255.248 = 29 11111111.11111111.11111111.11111 000
+   Wildcard:  0.0.0.7              00000000.00000000.00000000.00000 111
+   
+    1.
+   Network:   10.10.10.0/29        00001010.00001010.00001010.00000 000
+   HostMin:   10.10.10.1           00001010.00001010.00001010.00000 001
+   HostMax:   10.10.10.6           00001010.00001010.00001010.00000 110
+   Broadcast: 10.10.10.7           00001010.00001010.00001010.00000 111
+   Hosts/Net: 6                     Class A, Private Internet
+   
+    2.
+   Network:   10.10.10.8/29        00001010.00001010.00001010.00001 000
+   HostMin:   10.10.10.9           00001010.00001010.00001010.00001 001
+   HostMax:   10.10.10.14          00001010.00001010.00001010.00001 110
+   Broadcast: 10.10.10.15          00001010.00001010.00001010.00001 111
+   Hosts/Net: 6                     Class A, Private Internet
+   
+   ...
+    
+    31.
+   Network:   10.10.10.240/29      00001010.00001010.00001010.11110 000
+   HostMin:   10.10.10.241         00001010.00001010.00001010.11110 001
+   HostMax:   10.10.10.246         00001010.00001010.00001010.11110 110
+   Broadcast: 10.10.10.247         00001010.00001010.00001010.11110 111
+   Hosts/Net: 6                     Class A, Private Internet
+   
+    32.
+   Network:   10.10.10.248/29      00001010.00001010.00001010.11111 000
+   HostMin:   10.10.10.249         00001010.00001010.00001010.11111 001
+   HostMax:   10.10.10.254         00001010.00001010.00001010.11111 110
+   Broadcast: 10.10.10.255         00001010.00001010.00001010.11111 111
+   Hosts/Net: 6                     Class A, Private Internet
+   
+   
+   Subnets:   32
+   Hosts:     192
+   ```
+
+6. Допустимо взять адреса из диапазона `100.64.0.0 — 100.127.255.255`.\
+Пример подсети подходящий для 40-50 хостов (`100.64.0.0/26`):
+   ```
+   root@ubu18:~# ipcalc 100.64.0.0/10 -s 50
+   Address:   100.64.0.0           01100100.01 000000.00000000.00000000
+   Netmask:   255.192.0.0 = 10     11111111.11 000000.00000000.00000000
+   Wildcard:  0.63.255.255         00000000.00 111111.11111111.11111111
+   =>
+   Network:   100.64.0.0/10        01100100.01 000000.00000000.00000000
+   HostMin:   100.64.0.1           01100100.01 000000.00000000.00000001
+   HostMax:   100.127.255.254      01100100.01 111111.11111111.11111110
+   Broadcast: 100.127.255.255      01100100.01 111111.11111111.11111111
+   Hosts/Net: 4194302               Class A
+   
+   1. Requested size: 50 hosts
+   Netmask:   255.255.255.192 = 26 11111111.11111111.11111111.11 000000
+   Network:   100.64.0.0/26        01100100.01000000.00000000.00 000000
+   HostMin:   100.64.0.1           01100100.01000000.00000000.00 000001
+   HostMax:   100.64.0.62          01100100.01000000.00000000.00 111110
+   Broadcast: 100.64.0.63          01100100.01000000.00000000.00 111111
+   Hosts/Net: 62                    Class A
+   
+   Needed size:  64 addresses.
+   Used network: 100.64.0.0/26
+   ```
+
+7. Вывести все записи из arp таблицы.\
+**Linux**:
+   ```
+   root@ubu18:~# arp -e
+   Address                  HWtype  HWaddress           Flags Mask            Iface
+   192.168.1.12             ether   a8:a1:59:16:4d:84   C                     enp0s3
+   gpon.net                 ether   a3:8d:9f:b3:1c:af   C                     enp0s3
+   192.168.1.33             ether   cc:2d:e0:00:f8:c5   C                     enp0s3
+   
+   ИЛИ
+   
+   root@ubu18:~# ip neigh
+   192.168.1.12 dev enp0s3 lladdr a8:a1:59:16:4d:84 REACHABLE
+   192.168.1.1 dev enp0s3 lladdr a3:8d:9f:b3:1c:af STALE
+   192.168.1.33 dev enp0s3 lladdr cc:2d:e0:00:f8:c5 STALE
+   fe80::1 dev enp0s3 lladdr a3:8d:9f:b3:1c:af router STALE
+   ```
+   **Windows**:
+   ```
+   PS C:\Users\Andy> arp -a
+
+   Интерфейс: 192.168.1.12 --- 0xa
+     адрес в Интернете      Физический адрес      Тип
+     192.168.1.1           a3-8d-9f-b3-1c-af     динамический
+     192.168.1.13          08-00-27-20-f3-ac     динамический
+     192.168.1.33          cc-2d-e0-00-f8-c5     динамический
+   ```
+
+   Очистить ARP таблицу на Linux можно командой `ip neigh flush all` на Windows `arp -d *`.  Удалить нужный IP из arp
+Linux `arp -d <IP_ADDRESS>` или `ip neigh del <IP_ADDRESS> dev <IF_NAME>`, Windows `arp -d <IP_ADDRESS>`.
+
+---
+
 # Домашнее задание к занятию "3.6. Компьютерные сети. Лекция 1"
 1. HTTP GET запрос к stackoverflow.com/questions вернул код `403 Forbidden`. Код `403` означает что сервер понимает
 запрос, но у выполняемого его клиента ограничен доступ к указанному ресурсу. В данном случаи блокируется по ip адресу.
