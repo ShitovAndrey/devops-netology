@@ -1,3 +1,143 @@
+# Домашнее задание к занятию "3.8. Компьютерные сети, лекция 3"
+
+1. Вывод команды `show ip route` и `show bgp`:
+   ```
+   route-views>show ip route 46.138.50.191
+   Routing entry for 46.138.0.0/16
+     Known via "bgp 6447", distance 20, metric 0
+     Tag 3303, type external
+     Last update from 217.192.89.50 1w0d ago
+     Routing Descriptor Blocks:
+     * 217.192.89.50, from 217.192.89.50, 1w0d ago
+         Route metric is 0, traffic share count is 1
+         AS Hops 3
+         Route tag 3303
+         MPLS label: none
+         
+   route-views>show ip bgp 46.138.50.191
+   BGP routing table entry for 46.138.0.0/16, version 2577278154
+   Paths: (23 available, best #22, table default)
+     Not advertised to any peer
+     Refresh Epoch 1
+     3333 8359 25513
+       193.0.0.56 from 193.0.0.56 (193.0.0.56)
+         Origin IGP, localpref 100, valid, external
+         Community: 0:199 8359:100 8359:5500 8359:55277
+         path 7FE10377FAB8 RPKI State not found
+         rx pathid: 0, tx pathid: 0
+     Refresh Epoch 1
+     3267 8359 25513
+       194.85.40.15 from 194.85.40.15 (185.141.126.1)
+         Origin IGP, metric 0, localpref 100, valid, external
+         path 7FE16DEC3888 RPKI State not found
+         rx pathid: 0, tx pathid: 0
+     Refresh Epoch 1
+     7018 3356 8359 25513
+       12.0.1.63 from 12.0.1.63 (12.0.1.63)
+         Origin IGP, localpref 100, valid, external
+         Community: 7018:5000 7018:37232
+         path 7FE0AF85FF10 RPKI State not found
+         rx pathid: 0, tx pathid: 0
+     Refresh Epoch 1
+     6939 8359 25513
+       64.71.137.241 from 64.71.137.241 (216.218.252.164)
+         Origin IGP, localpref 100, valid, external
+         path 7FE1CC2E48E8 RPKI State not found
+         rx pathid: 0, tx pathid: 0
+     Refresh Epoch 1
+     701 3356 8359 25513
+       137.39.3.55 from 137.39.3.55 (137.39.3.55)
+         Origin IGP, localpref 100, valid, external
+         path 7FE048FC1328 RPKI State not found
+         rx pathid: 0, tx pathid: 0
+     Refresh Epoch 1
+     8283 8359 25513
+       94.142.247.3 from 94.142.247.3 (94.142.247.3)
+         Origin IGP, metric 0, localpref 100, valid, external
+         Community: 0:199 8283:1 8283:101 8359:100 8359:5500 8359:55277
+         unknown transitive attribute: flag 0xE0 type 0x20 length 0x24
+           value 0000 205B 0000 0000 0000 0001 0000 205B
+                 0000 0005 0000 0001 0000 205B 0000 0008
+                 0000 001A
+         path 7FE11D04D200 RPKI State not found
+         rx pathid: 0, tx pathid: 0
+     Refresh Epoch 1
+     57866 3356 8359 25513
+       37.139.139.17 from 37.139.139.17 (37.139.139.17)
+         Origin IGP, metric 0, localpref 100, valid, external
+         Community: 0:199 3356:2 3356:22 3356:100 3356:123 3356:519 3356:903 3356:2094 8359:100 8359:5500 8359:55277 57866:100 65100:3356 65103:1 65104:31
+         unknown transitive attribute: flag 0xE0 type 0x20 length 0x30
+           value 0000 E20A 0000 0064 0000 0D1C 0000 E20A
+                 0000 0065 0000 0064 0000 E20A 0000 0067
+                 0000 0001 0000 E20A 0000 0068 0000 001F
+   
+         path 7FE13BF04808 RPKI State not found
+         rx pathid: 0, tx pathid: 0
+     Refresh Epoch 1
+     20912 3257 3356 8359 25513
+       212.66.96.126 from 212.66.96.126 (212.66.96.126)
+   ```
+
+2. Создание dummy0 интерфейса в Ubuntu.
+   ```
+   ip link add name dummy0 type dummy
+   ip link set dummy0 up
+   ip address add 172.16.1.10/32 dev dummy0
+   
+   root@ubu18:~# ip -br a
+   lo               UNKNOWN        127.0.0.1/8 ::1/128
+   enp0s3           UP             192.168.1.13/24 fe80::6d12:4343:68d0:b754/64
+   enp0s8           UP             10.0.3.15/24 fe80::cff5:eeae:dd36:901a/64
+   enp0s9           UP             10.0.4.15/24 fe80::8bb4:4de6:c79:1fb3/64
+   dummy0           UNKNOWN        172.16.1.10/32 fe80::68cb:abff:fed8:8429/64
+   ```
+
+   Добавление статических маршрутов. Один маршрут через шлюз, другой через интерфейс.
+   ```
+   ip route add 172.16.200.0/24 via 10.0.3.15
+   ip route add 172.16.210.0/24 dev enp0s9
+   ```
+   
+   Вывод таблицы маршрутизации
+   ```
+   root@ubu18:~# ip route
+   default via 192.168.1.1 dev enp0s3 proto dhcp metric 100
+   default via 10.0.3.2 dev enp0s8 proto dhcp metric 101
+   default via 10.0.4.2 dev enp0s9 proto dhcp metric 102
+   10.0.3.0/24 dev enp0s8 proto kernel scope link src 10.0.3.15 metric 101
+   10.0.4.0/24 dev enp0s9 proto kernel scope link src 10.0.4.15 metric 102
+   169.254.0.0/16 dev enp0s3 scope link metric 1000
+   172.16.200.0/24 via 10.0.3.15 dev enp0s8
+   172.16.210.0/24 dev enp0s9 scope link
+   192.168.1.0/24 dev enp0s3 proto kernel scope link src 192.168.1.13 metric 100
+   ```
+3. Открытые TCP порты и прослушивающие их процессы выводит команда `ss -lntp`. Из выводы открыты TCP порты 8125, 19999,
+53, 22, 631. TCP/22 - протокол SSH, используется демоном sshd. TCP/53 - протокол DNS используется демоном
+systemd-resolve.
+   ```
+   State     Local Address:Port      Process
+   LISTEN        127.0.0.1:8125       users:(("netdata",pid=8643,fd=40))
+   LISTEN          0.0.0.0:19999      users:(("netdata",pid=8643,fd=4))
+   LISTEN    127.0.0.53%lo:53         users:(("systemd-resolve",pid=569,fd=13))
+   LISTEN          0.0.0.0:22         users:(("sshd",pid=8658,fd=3))
+   LISTEN        127.0.0.1:631        users:(("cupsd",pid=273803,fd=7))
+   ```
+
+4. Открытые UDP порты и прослушивающие их процессы выводит команда `ss -lnup`. Из выводы открыты UDP порты 631, 8125,
+46089, 53, 5353. UDP/631 - протокол CUPS, используется демоном cups-browsed. UDP/53 - протокол DNS используется демоном
+systemd-resolve.
+   ```
+   State       Local Address:Port      Process
+   UNCONN            0.0.0.0:631        users:(("cups-browsed",pid=1073447,fd=7))
+   UNCONN          127.0.0.1:8125       users:(("netdata",pid=8643,fd=39))
+   UNCONN            0.0.0.0:46089      users:(("avahi-daemon",pid=636,fd=14))
+   UNCONN      127.0.0.53%lo:53         users:(("systemd-resolve",pid=569,fd=12))
+   UNCONN            0.0.0.0:5353       users:(("avahi-daemon",pid=636,fd=12))
+   ```
+5. Диаграмма сети L3 прилагается отдельной ссылкой. Для наглядности добавлен L2 коммутатор и Wifi AP.
+
+---
+
 # Домашнее задание к занятию "3.7. Компьютерные сети. Лекция 2"
 1. Примеры команд вывода информации по сетевым интерфейсам:
    * Для Linux:
