@@ -30,3 +30,18 @@ variable "vpc_name" {
   default     = "develop"
   description = "VPC network&subnet name"
 }
+
+###ssh vars
+variable "vm_metadata" {
+  type = map
+  default = {
+    ssh-user           = "ubuntu"
+    serial-port-enable = 1
+  }
+}
+
+###yandex_compute_image
+variable "compute_image_family" {
+  type    = string
+  default = "ubuntu-2004-lts"
+}
