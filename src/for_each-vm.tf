@@ -9,7 +9,7 @@ resource "yandex_compute_instance" "vm_for_each" {
     vm.vm_name => vm
   }
 
-  name        = "vm-count-${each.value.vm_name}"
+  name        = "vm-for-each-${each.value.vm_name}"
   platform_id = var.vm_for_each_platform_id
   resources {
     cores         = each.value.cpu
