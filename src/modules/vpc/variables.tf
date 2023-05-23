@@ -14,37 +14,20 @@ variable "folder_id" {
   description = "https://cloud.yandex.ru/docs/resource-manager/operations/folder/get-id"
 }
 
-variable "default_zone" {
+###network vars
+variable "zone" {
   type        = string
   default     = "ru-central1-a"
   description = "https://cloud.yandex.ru/docs/overview/concepts/geo-scope"
 }
-
-###common vars
-
-variable "vms_ssh_root_key" {
-  type        = string
-  default     = "your_ssh_ed25519_key"
-  description = "ssh-keygen -t ed25519"
+variable "cidr" {
+  type        = list(string)
+  default     = ["10.0.1.0/24"]
+  description = "https://cloud.yandex.ru/docs/vpc/operations/subnet-create"
 }
 
-###example vm_web var
-variable "vm_web_name" {
+variable "env_name" {
   type        = string
-  default     = "netology-develop-platform-web"
-  description = "example vm_web_ prefix"
-}
-
-###example vm_db var
-variable "vm_db_name" {
-  type        = string
-  default     = "netology-develop-platform-db"
-  description = "example vm_db_ prefix"
-}
-
-
-### Cloud init variables
-variable "cloud_init_packages" {
-  type = list(string)
-  default = []
+  default     = "develop"
+  description = "VPC network&subnet name"
 }
