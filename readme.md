@@ -57,7 +57,7 @@
 
 ## Задание 3  
   <em>Проверье код с помощью tflint и checkov, исправьте все предупреждения и ошибки, откройте новый pull request, пришлите ссылку на PR для ревью</em>  
-  <https://github.com/ShitovAndrey/devops-netology/pull/1>  
+  [Pull request](https://github.com/ShitovAndrey/devops-netology/pull/1)  
 
 ## Задание 4
   * **Пункт 1.** <em>Напишите переменные с валидацией и протестируйте их, заполнив default верными и неверными значениями. Предоставьте скриншоты проверок.</em>  
