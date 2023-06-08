@@ -57,14 +57,14 @@
 
 ## Задание 3  
   <em>Проверье код с помощью tflint и checkov, исправьте все предупреждения и ошибки, откройте новый pull request, пришлите ссылку на PR для ревью</em>  
-  https://github.com/ShitovAndrey/devops-netology/pull/1  
+  <https://github.com/ShitovAndrey/devops-netology/pull/1>  
 
 ## Задание 4
   * **Пункт 1.** <em>Напишите переменные с валидацией и протестируйте их, заполнив default верными и неверными значениями. Предоставьте скриншоты проверок.</em>  
-  ![](/hw-05/validata_vars.png)  
+    ![](/hw-05/validata_vars.png)  
 
-  При default = "1920.1680.0.1" и default = ["192.168.0.1", "1.1.1.1", "1270.0.0.1"]  
-  ![](/hw-05/validata_vars_error.png)  
+    При default = "1920.1680.0.1" и default = ["192.168.0.1", "1.1.1.1", "1270.0.0.1"]  
+    ![](/hw-05/validata_vars_error.png)  
 
-  При default = "192.168.0.1" и default = ["192.168.0.1", "1.1.1.1", "127.0.0.1"]  
-  ![](/hw-05/validata_vars_ok.png)  
+    При default = "192.168.0.1" и default = ["192.168.0.1", "1.1.1.1", "127.0.0.1"]  
+    ![](/hw-05/validata_vars_ok.png)  
