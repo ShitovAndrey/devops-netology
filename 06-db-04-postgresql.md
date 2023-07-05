@@ -120,7 +120,7 @@ CREATE TABLE public.orders (
     id integer NOT NULL,
     title character varying(80) NOT NULL,
     price integer DEFAULT 0 NOT NULL,
-    UNIQUE (id,price)
+    UNIQUE (title,price)
 )
 PARTITION BY RANGE (price);
 ```
@@ -128,8 +128,8 @@ PARTITION BY RANGE (price);
 ### Для таблицы без партиций
 ``` sql
 CREATE TABLE public.orders (
-    id integer NOT NULL UNIQUE,
-    title character varying(80) NOT NULL,
+    id integer NOT NULL,
+    title character varying(80) NOT NULL UNIQUE,
     price integer DEFAULT 0
 );
 ```
